@@ -102,6 +102,22 @@ body {
   font-weight: 500;
 }
 
+.app-header .subtitle strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.header-phone-link {
+  color: #059669;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.header-phone-link:hover {
+  text-decoration: underline;
+  color: #047857;
+}
+
 .header-right {
   display: flex;
   align-items: center;
