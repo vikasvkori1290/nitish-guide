@@ -541,7 +541,7 @@ function renderManifest() {
       if (!matchName && !matchContact && !matchPickup) return false;
     }
 
-    if (selectedPickup !== 'all' && item.pickupPoint.toLowerCase() !== selectedPickup.toLowerCase()) {
+    if (selectedPickup !== 'all' && getNormalizedKey(item.pickupPoint) !== selectedPickup) {
       return false;
     }
 
@@ -807,17 +807,28 @@ function updateStats() {
   statPaxPending.textContent = `${pendingPax} pax waiting`;
 }
 
-// Update Pickup Point filter options dynamically from current list
+// Update Pickup Point filter options dynamically from current list (case-insensitive)
 function updatePickupFilterDropdown() {
-  const currentSelection = pickupFilter.value;
-  const uniquePoints = Array.from(new Set(manifestList.map(item => item.pickupPoint.trim()).filter(Boolean))).sort();
+  const currentSelection = (pickupFilter.value || 'all').toLowerCase().trim();
+  const uniqueMap = new Map();
+
+  manifestList.forEach(item => {
+    const raw = (item.pickupPoint || '').trim();
+    if (!raw) return;
+    const key = getNormalizedKey(raw);
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, cleanPickupPointName(raw));
+    }
+  });
+
+  const sortedKeys = Array.from(uniqueMap.keys()).sort();
 
   pickupFilter.innerHTML = '<option value="all">All Pickup Points</option>';
-  uniquePoints.forEach(pt => {
+  sortedKeys.forEach(k => {
     const opt = document.createElement('option');
-    opt.value = pt;
-    opt.textContent = pt;
-    if (pt.toLowerCase() === currentSelection.toLowerCase()) {
+    opt.value = k;
+    opt.textContent = uniqueMap.get(k);
+    if (k === currentSelection) {
       opt.selected = true;
     }
     pickupFilter.appendChild(opt);
@@ -888,6 +899,50 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/**
+ * Normalizes pickup point names so that uppercase, lowercase,
+ * and minor spelling variations (e.g. 'Marathahalli' vs 'marathalli')
+ * are cleanly treated as the SAME location.
+ */
+function cleanPickupPointName(str) {
+  if (!str) return 'Unspecified';
+  const trimmed = str.trim();
+  const lower = trimmed.toLowerCase().replace(/[\s\-_]+/g, '');
+
+  if (lower === 'marathalli' || lower === 'marathahalli') {
+    return 'Marathahalli';
+  }
+  if (lower === 'silkboard') {
+    return 'Silk Board';
+  }
+  if (lower === 'btm' || lower === 'btmlayout') {
+    return 'BTM';
+  }
+  if (lower === 'bellandur') {
+    return 'Bellandur';
+  }
+  if (lower === 'kalamandir' || lower === 'kalamandira') {
+    return 'Kalamandir';
+  }
+
+  // General Title Case for any other place name
+  return trimmed
+    .split(/\s+/)
+    .map(word => {
+      // Keep short acronyms (e.g. BTM, HSR) uppercase
+      if (word.length <= 4 && word === word.toUpperCase() && /^[A-Z]+$/.test(word)) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function getNormalizedKey(str) {
+  const cleaned = cleanPickupPointName(str);
+  return cleaned.toLowerCase().replace(/[\s\-_]+/g, '');
+}
+
 // --- Dynamic Location Summary (Groups & Pax Boarding per Place) ---
 function renderLocationSummary() {
   if (!locationSummarySection || !summaryTableBody || !summaryTableFoot) return;
@@ -899,18 +954,19 @@ function renderLocationSummary() {
 
   locationSummarySection.style.display = 'block';
 
-  // Group by normalized pickup point
+  // Group by case-insensitive normalized pickup point key
   const locationMap = new Map();
 
   manifestList.forEach(item => {
     const rawPlace = (item.pickupPoint || 'Unspecified').trim();
-    const key = rawPlace.toLowerCase();
+    const key = getNormalizedKey(rawPlace);
+    const standardName = cleanPickupPointName(rawPlace);
     const paxCount = parseInt(item.pax, 10) || 1;
     const isCompleted = !!item.completed;
 
     if (!locationMap.has(key)) {
       locationMap.set(key, {
-        displayName: rawPlace,
+        displayName: standardName,
         groups: 0,
         totalPax: 0,
         boardedPax: 0,
