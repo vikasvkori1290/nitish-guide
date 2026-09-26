@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passenger Pickup & Contact Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <path d="M9 17h6"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Pickup Dispatch Manager</h1>
+          <p class="subtitle">PDF Reader • Instant Caller • Auto-saved in Browser Storage</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="storage-badge" id="storageStatusBadge" title="Stored in LocalStorage">
+          <span class="pulse-dot"></span>
+          <span id="storageStatusText">Auto-Saved</span>
+        </div>
+        <button id="addManualBtn" class="btn btn-secondary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Add Passenger
+        </button>
+        <button id="clearAllBtn" class="btn btn-danger-outline btn-sm" title="Clear all stored data">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <!-- Upload & Actions Section -->
+    <section class="card upload-section">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="pdfFileInput" accept="application/pdf" class="file-input" />
+        <div class="dropzone-content">
+          <div class="dropzone-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <div class="dropzone-text">
+            <h3>Upload Passenger Manifest PDF</h3>
+            <p>Drag & drop your PDF file here, or <span>browse file</span></p>
+            <span class="file-format-tag">Format: pax | Name | Contact number | Pickup point</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-helpers">
+        <span class="helpers-label">Quick Actions:</span>
+        <button id="loadSampleBtn" class="pill-btn highlight-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Load Data from Sample Table
+        </button>
+        <button id="pasteTextBtn" class="pill-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          Paste Copied Text / CSV
+        </button>
+        <button id="exportCsvBtn" class="pill-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Export CSV
+        </button>
+      </div>
+    </section>
+
+    <!-- Metrics Banner -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Pax</div>
+        <div class="stat-value" id="statTotalPax">0</div>
+        <div class="stat-desc">Passengers across all bookings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Bookings</div>
+        <div class="stat-value" id="statTotalBookings">0</div>
+        <div class="stat-desc">Entries registered</div>
+      </div>
+      <div class="stat-card stat-success">
+        <div class="stat-label">Picked Up / Checked</div>
+        <div class="stat-value" id="statPickedUp">0</div>
+        <div class="stat-desc" id="statPaxPicked">0 pax boarded</div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-label">Pending Pickup</div>
+        <div class="stat-value" id="statPending">0</div>
+        <div class="stat-desc" id="statPaxPending">0 pax waiting</div>
+      </div>
+    </section>
+
+    <!-- Filter & Search Toolbar -->
+    <section class="card toolbar-card">
+      <div class="search-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search by passenger name, phone number, or pickup point..." />
+        <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="display:none;">&times;</button>
+      </div>
+
+      <div class="filter-controls">
+        <div class="filter-group">
+          <label for="pickupFilter">Pickup Point:</label>
+          <select id="pickupFilter" class="custom-select">
+            <option value="all">All Pickup Points</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="statusFilter">Status:</label>
+          <select id="statusFilter" class="custom-select">
+            <option value="all">All Status</option>
+            <option value="pending">Waiting (Pending)</option>
+            <option value="completed">Picked Up (Done)</option>
+          </select>
+        </div>
+
+        <button id="batchCheckAllBtn" class="btn btn-outline btn-sm" title="Mark all filtered as picked up">
+          Toggle All
+        </button>
+      </div>
+    </section>
+
+    <!-- Main Manifest Table View -->
+    <main class="card main-table-card">
+      <div class="table-header-meta">
+        <div class="meta-title">
+          <h2>Passenger Manifest</h2>
+          <span class="count-chip" id="visibleCountBadge">0 records</span>
+        </div>
+        <div class="instructions-hint">
+          <span>💡 <strong>Tip:</strong> Click the <strong>Pickup Point</strong> cell to edit directly. Click <strong>Call</strong> to dial immediately.</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="manifest-table" id="manifestTable">
+          <thead>
+            <tr>
+              <th class="th-check" width="60">Done</th>
+              <th class="th-pax" width="80">Pax</th>
+              <th class="th-name">Passenger Name</th>
+              <th class="th-contact">Contact Number</th>
+              <th class="th-pickup">Pickup Point <span class="badge-editable">Editable</span></th>
+              <th class="th-action" width="120">Direct Call</th>
+              <th class="th-opts" width="60"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Dynamic rows will be rendered here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>No passenger data yet</h3>
+        <p>Upload your PDF file above, load the sample data from your image, or paste table text.</p>
+        <div class="empty-actions">
+          <button id="emptyLoadSampleBtn" class="btn btn-primary">Load Sample Data</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Manual Add Modal -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add New Passenger</h3>
+        <button class="modal-close-btn" id="closeAddModal">&times;</button>
+      </div>
+      <form id="addPassengerForm">
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="inputPax">Pax (People) *</label>
+            <input type="number" id="inputPax" min="1" max="100" value="1" required />
+          </div>
+          <div class="form-group" style="flex: 3;">
+            <label for="inputName">Passenger Name *</label>
+            <input type="text" id="inputName" placeholder="e.g. Deepak P" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="inputContact">Contact Number *</label>
+          <input type="tel" id="inputContact" placeholder="e.g. 9876543210" required />
+        </div>
+        <div class="form-group">
+          <label for="inputPickup">Pickup Point *</label>
+          <input type="text" id="inputPickup" placeholder="e.g. Marathahalli, Bellandur" required />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" id="cancelAddModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to Manifest</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Paste Text Modal -->
+  <div class="modal-overlay" id="pasteModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3>Paste Table Data or CSV</h3>
+        <button class="modal-close-btn" id="closePasteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-help-text">Paste text copied from PDF, Excel, or tabular format. Each line should represent a row (Pax, Name, Contact, Pickup):</p>
+        <textarea id="pasteTextarea" rows="8" placeholder="3	DEEPAK P	8939385647	Marathahalli&#10;4	Aditya Ujjwal	9973652338	Marathahalli"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="cancelPasteModal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="importPastedBtn">Import Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
