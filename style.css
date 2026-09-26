@@ -118,6 +118,13 @@ body {
   color: #047857;
 }
 
+.security-note {
+  font-size: 0.78rem;
+  color: #059669;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
 .header-right {
   display: flex;
   align-items: center;
