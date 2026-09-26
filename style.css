@@ -692,12 +692,6 @@ body {
   transform: translateY(1px);
 }
 
-.btn-call.called-already {
-  background: #475569;
-  color: #f1f5f9 !important;
-  box-shadow: none;
-}
-
 .row-delete-btn {
   background: none;
   border: none;
@@ -708,9 +702,173 @@ body {
   transition: all 0.15s;
 }
 
-.row-delete-btn:hover {
-  color: #dc2626;
-  background: #fee2e2;
+/* Call Cell Wrapper (Checkbox + Call Button side-by-side) */
+.call-cell-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.call-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #0f172a;
+  border-radius: 5px;
+  flex-shrink: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.call-checkbox:checked {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* Pickup Summary Card at Bottom */
+.summary-breakdown-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1.5px solid var(--border-medium);
+  background: #ffffff;
+  margin-top: 0.5rem;
+}
+
+.summary-card-header {
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  border-bottom: 1.5px solid var(--border-medium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.summary-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.summary-badge-icon {
+  font-size: 1.4rem;
+}
+
+.summary-header-left h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.summary-card-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.summary-table th {
+  background: #00ea62;
+  color: #000000;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #15803d;
+}
+
+.summary-table td {
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  font-size: 0.92rem;
+  color: #000000;
+  background: #ffffff;
+  vertical-align: middle;
+}
+
+.summary-table tfoot td {
+  background: #f8fafc;
+  font-weight: 800;
+  border-top: 2px solid #0f172a;
+  padding: 0.95rem 1rem;
+}
+
+.place-name {
+  font-weight: 800;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.98rem;
+}
+
+.groups-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: 1.5px solid #94a3b8;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.pax-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecfdf5;
+  border: 1.5px solid #059669;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  color: #065f46;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #10b981;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.status-badge.status-ready {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.status-waiting {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 /* Buttons */
@@ -1206,14 +1364,29 @@ body {
     padding: 0.5rem 0.75rem;
   }
 
-  /* Direct Call Button on Phone: Full Width, Thumb-Friendly, Big Tap Target! */
+  /* Direct Call Button and Checkbox on Phone: Side by side, Thumb-Friendly, Big Tap Target! */
   .manifest-table td:nth-child(6) {
-    margin-top: 0.6rem;
+    margin-top: 0.65rem;
     display: block;
   }
 
-  .btn-call {
+  .call-cell-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     width: 100%;
+  }
+
+  .call-cell-wrapper .call-checkbox {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border-width: 2px;
+  }
+
+  .call-cell-wrapper .btn-call {
+    flex: 1;
+    width: auto;
     padding: 0.75rem 1rem;
     font-size: 1rem;
     border-radius: var(--radius-md);
@@ -1230,5 +1403,11 @@ body {
 
   .row-delete-btn {
     padding: 0.5rem;
+  }
+
+  /* Bottom summary table on mobile */
+  .summary-table th, .summary-table td {
+    padding: 0.65rem 0.6rem;
+    font-size: 0.85rem;
   }
 }

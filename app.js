@@ -34,6 +34,12 @@ const statPaxPending = document.getElementById('statPaxPending');
 const visibleCountBadge = document.getElementById('visibleCountBadge');
 const storageStatusText = document.getElementById('storageStatusText');
 
+// Location Summary Elements (Bottom Breakdown)
+const locationSummarySection = document.getElementById('locationSummarySection');
+const locationCountBadge = document.getElementById('locationCountBadge');
+const summaryTableBody = document.getElementById('summaryTableBody');
+const summaryTableFoot = document.getElementById('summaryTableFoot');
+
 // Filters
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -612,19 +618,28 @@ function renderManifest() {
           </div>
         </td>
 
-        <!-- Direct Call Button -->
+        <!-- Direct Call & Checkbox Column -->
         <td>
-          <a 
-            href="tel:${cleanPhone}" 
-            class="btn-call ${isCalled ? 'called-already' : ''}" 
-            data-id="${item.id}"
-            title="Call ${escapeHtml(item.name)} (${cleanPhone})"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-            </svg>
-            ${isCalled ? 'Called' : 'Call'}
-          </a>
+          <div class="call-cell-wrapper">
+            <input 
+              type="checkbox" 
+              class="custom-checkbox call-checkbox" 
+              data-id="${item.id}" 
+              ${isCalled ? 'checked' : ''} 
+              title="Mark if called"
+            />
+            <a 
+              href="tel:${cleanPhone}" 
+              class="btn-call" 
+              data-id="${item.id}"
+              title="Call ${escapeHtml(item.name)} (${cleanPhone})"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              Call
+            </a>
+          </div>
         </td>
 
         <!-- Row Delete Action -->
@@ -638,10 +653,11 @@ function renderManifest() {
   }).join('');
 
   attachRowEventListeners();
+  renderLocationSummary();
 }
 
 function attachRowEventListeners() {
-  // Checkbox toggle
+  // Checkbox toggle (Picked up / boarded)
   document.querySelectorAll('.row-checkbox').forEach(chk => {
     chk.addEventListener('change', (e) => {
       const id = e.target.getAttribute('data-id');
@@ -655,20 +671,26 @@ function attachRowEventListeners() {
     });
   });
 
-  // Direct Call Button
+  // Call Checkbox toggle (User manually marks/unmarks)
+  document.querySelectorAll('.call-checkbox').forEach(chk => {
+    chk.addEventListener('change', (e) => {
+      const id = e.target.getAttribute('data-id');
+      const item = manifestList.find(x => x.id === id);
+      if (item) {
+        item.called = e.target.checked;
+        saveToStorage(false);
+        showToast(item.called ? `Marked ${item.name} as Called` : `Unmarked ${item.name}`, 'info');
+      }
+    });
+  });
+
+  // Direct Call Button (dial without changing button label)
   document.querySelectorAll('.btn-call').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const item = manifestList.find(x => x.id === id);
       if (item) {
-        item.called = true;
-        saveToStorage(false);
-        btn.classList.add('called-already');
-        btn.innerHTML = `
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg> Called`;
-        showToast(`Opening dialer for ${item.name}...`, 'info');
+        showToast(`Calling ${item.name}...`, 'info');
       }
     });
   });
@@ -864,4 +886,117 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// --- Dynamic Location Summary (Groups & Pax Boarding per Place) ---
+function renderLocationSummary() {
+  if (!locationSummarySection || !summaryTableBody || !summaryTableFoot) return;
+
+  if (manifestList.length === 0) {
+    locationSummarySection.style.display = 'none';
+    return;
+  }
+
+  locationSummarySection.style.display = 'block';
+
+  // Group by normalized pickup point
+  const locationMap = new Map();
+
+  manifestList.forEach(item => {
+    const rawPlace = (item.pickupPoint || 'Unspecified').trim();
+    const key = rawPlace.toLowerCase();
+    const paxCount = parseInt(item.pax, 10) || 1;
+    const isCompleted = !!item.completed;
+
+    if (!locationMap.has(key)) {
+      locationMap.set(key, {
+        displayName: rawPlace,
+        groups: 0,
+        totalPax: 0,
+        boardedPax: 0,
+        waitingPax: 0
+      });
+    }
+
+    const loc = locationMap.get(key);
+    loc.groups += 1;
+    loc.totalPax += paxCount;
+    if (isCompleted) {
+      loc.boardedPax += paxCount;
+    } else {
+      loc.waitingPax += paxCount;
+    }
+  });
+
+  const locations = Array.from(locationMap.values()).sort((a, b) => b.totalPax - a.totalPax);
+
+  if (locationCountBadge) {
+    locationCountBadge.textContent = `${locations.length} Places`;
+  }
+
+  let grandTotalGroups = 0;
+  let grandTotalPax = 0;
+  let grandBoardedPax = 0;
+
+  summaryTableBody.innerHTML = locations.map(loc => {
+    grandTotalGroups += loc.groups;
+    grandTotalPax += loc.totalPax;
+    grandBoardedPax += loc.boardedPax;
+
+    const pct = loc.totalPax > 0 ? Math.round((loc.boardedPax / loc.totalPax) * 100) : 0;
+    const isAllBoarded = loc.boardedPax >= loc.totalPax;
+
+    return `
+      <tr>
+        <td>
+          <span class="place-name">📍 ${escapeHtml(loc.displayName)}</span>
+        </td>
+        <td style="text-align: center;">
+          <span class="groups-pill">${loc.groups} ${loc.groups === 1 ? 'group' : 'groups'}</span>
+        </td>
+        <td style="text-align: center;">
+          <span class="pax-pill">${loc.totalPax} pax</span>
+        </td>
+        <td>
+          <div class="progress-label">
+            <span>${loc.boardedPax} / ${loc.totalPax} boarded</span>
+            <span>${pct}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${pct}%;"></div>
+          </div>
+        </td>
+        <td style="text-align: center;">
+          <span class="status-badge ${isAllBoarded ? 'status-ready' : 'status-waiting'}">
+            ${isAllBoarded ? '✓ Boarded' : `${loc.waitingPax} waiting`}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const grandPct = grandTotalPax > 0 ? Math.round((grandBoardedPax / grandTotalPax) * 100) : 0;
+  const grandWaiting = grandTotalPax - grandBoardedPax;
+
+  summaryTableFoot.innerHTML = `
+    <tr>
+      <td><strong>Total: ${locations.length} Locations</strong></td>
+      <td style="text-align: center;"><strong>${grandTotalGroups} Groups</strong></td>
+      <td style="text-align: center;"><strong>${grandTotalPax} Pax</strong></td>
+      <td>
+        <div class="progress-label">
+          <span><strong>${grandBoardedPax} / ${grandTotalPax} boarded</strong></span>
+          <span><strong>${grandPct}%</strong></span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width: ${grandPct}%;"></div>
+        </div>
+      </td>
+      <td style="text-align: center;">
+        <span class="status-badge ${grandWaiting === 0 ? 'status-ready' : 'status-waiting'}">
+          ${grandWaiting === 0 ? '✓ Complete' : `${grandWaiting} waiting`}
+        </span>
+      </td>
+    </tr>
+  `;
 }

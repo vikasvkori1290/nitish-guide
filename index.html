@@ -158,8 +158,8 @@
               <th class="th-name">Passenger Name</th>
               <th class="th-contact">Contact Number</th>
               <th class="th-pickup">Pickup Point <span class="badge-editable">Editable</span></th>
-              <th class="th-action" width="120">Direct Call</th>
-              <th class="th-opts" width="60"></th>
+              <th class="th-action" width="145">Call</th>
+              <th class="th-opts" width="50"></th>
             </tr>
           </thead>
           <tbody id="tableBody">
@@ -181,6 +181,42 @@
         </div>
       </div>
     </main>
+
+    <!-- Bottom Breakdown: Location-wise Groups and Pax Boarding -->
+    <section class="card summary-breakdown-card" id="locationSummarySection" style="display: none;">
+      <div class="summary-card-header">
+        <div class="summary-header-left">
+          <div class="summary-badge-icon">📍</div>
+          <div>
+            <h3>Boarding Summary by Pickup Place</h3>
+            <p class="summary-card-desc">Overview of how many groups and total passengers are boarding from each location</p>
+          </div>
+        </div>
+        <div class="summary-header-right">
+          <span class="count-chip" id="locationCountBadge">0 Locations</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="manifest-table summary-table" id="summaryTable">
+          <thead>
+            <tr>
+              <th>Pickup Place / Location</th>
+              <th width="140" style="text-align: center;">Groups Boarding</th>
+              <th width="140" style="text-align: center;">Total Pax Boarding</th>
+              <th width="180">Boarding Progress</th>
+              <th width="120" style="text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTableBody">
+            <!-- Dynamic location summary rows -->
+          </tbody>
+          <tfoot id="summaryTableFoot">
+            <!-- Dynamic total summary footer -->
+          </tfoot>
+        </table>
+      </div>
+    </section>
   </div>
 
   <!-- Manual Add Modal -->
