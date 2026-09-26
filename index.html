@@ -67,14 +67,10 @@
       </div>
 
       <div class="quick-helpers">
-        <span class="helpers-label">Quick Actions:</span>
-        <button id="loadSampleBtn" class="pill-btn highlight-pill">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          Load Data from Sample Table
-        </button>
+        <span class="helpers-label">Actions:</span>
         <button id="pasteTextBtn" class="pill-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-          Paste Copied Text / CSV
+          Paste Text / CSV
         </button>
         <button id="exportCsvBtn" class="pill-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -174,11 +170,14 @@
 
       <!-- Empty State -->
       <div id="emptyState" class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h3>No passenger data yet</h3>
-        <p>Upload your PDF file above, load the sample data from your image, or paste table text.</p>
+        <div class="empty-icon">📄</div>
+        <h3>No Passengers Loaded</h3>
+        <p>Please upload or drop your passenger manifest PDF file above to load the list.</p>
         <div class="empty-actions">
-          <button id="emptyLoadSampleBtn" class="btn btn-primary">Load Sample Data</button>
+          <label for="pdfFileInput" class="btn btn-primary" style="cursor: pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Select PDF File
+          </label>
         </div>
       </div>
     </main>
@@ -199,7 +198,7 @@
           </div>
           <div class="form-group" style="flex: 3;">
             <label for="inputName">Passenger Name *</label>
-            <input type="text" id="inputName" placeholder="e.g. Deepak P" required />
+            <input type="text" id="inputName" placeholder="e.g. Full Name" required />
           </div>
         </div>
         <div class="form-group">
@@ -208,7 +207,7 @@
         </div>
         <div class="form-group">
           <label for="inputPickup">Pickup Point *</label>
-          <input type="text" id="inputPickup" placeholder="e.g. Marathahalli, Bellandur" required />
+          <input type="text" id="inputPickup" placeholder="e.g. Pickup Location" required />
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" id="cancelAddModal">Cancel</button>
@@ -226,8 +225,8 @@
         <button class="modal-close-btn" id="closePasteModal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-help-text">Paste text copied from PDF, Excel, or tabular format. Each line should represent a row (Pax, Name, Contact, Pickup):</p>
-        <textarea id="pasteTextarea" rows="8" placeholder="3	DEEPAK P	8939385647	Marathahalli&#10;4	Aditya Ujjwal	9973652338	Marathahalli"></textarea>
+        <p class="modal-help-text">Paste text copied from PDF, Excel, or tabular format. Each line represents a row (Pax, Name, Contact, Pickup):</p>
+        <textarea id="pasteTextarea" rows="8" placeholder="Pax	Name	Contact	Pickup"></textarea>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" id="cancelPasteModal">Cancel</button>

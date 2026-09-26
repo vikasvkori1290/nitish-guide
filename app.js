@@ -1,7 +1,10 @@
 /**
- * Passenger Pickup & Dispatch Manager
- * Handles PDF parsing via PDF.js, LocalStorage persistence,
- * editable pickup locations, filtering, and direct tel: calling.
+ * Passenger Manifest & Dispatch Manager
+ * Pure HTML / CSS / JS Application
+ *
+ * Automatically parses PDF table manifests (pax | Name | Contact number | Pickup point),
+ * stores all data in browser localStorage, enables direct mobile calling (tel:),
+ * and provides inline-editable pickup points.
  */
 
 // Initialize PDF.js worker
@@ -9,35 +12,10 @@ if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-const STORAGE_KEY = 'passenger_manifest_records_v1';
+const STORAGE_KEY = 'passenger_manifest_records_v2';
 
-// Exact sample data matching user's reference image
-const SAMPLE_DATA = [
-  { id: 'sm_1', pax: 3, name: 'DEEPAK P', contact: '8939385647', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_2', pax: 4, name: 'Aditya Ujjwal', contact: '9973652338', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_3', pax: 2, name: 'Mohit Dhaka', contact: '9126919213', pickupPoint: 'Bellandur', completed: false, called: false },
-  { id: 'sm_4', pax: 9, name: 'Ananya', contact: '6362498876', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_5', pax: 6, name: 'Nidhi Chaubey', contact: '9108449210', pickupPoint: 'Silk Board', completed: false, called: false },
-  { id: 'sm_6', pax: 2, name: 'Meghana Acharya', contact: '8296133642', pickupPoint: 'Bellandur', completed: false, called: false },
-  { id: 'sm_7', pax: 10, name: 'Neha Kurian', contact: '7823861942', pickupPoint: 'BTM', completed: false, called: false },
-  { id: 'sm_8', pax: 2, name: 'Saranya Pandiyan', contact: '9944518302', pickupPoint: 'Kalamandir', completed: false, called: false },
-  { id: 'sm_9', pax: 4, name: 'Rajat Sharma', contact: '7018510617', pickupPoint: 'Kalamandir', completed: false, called: false },
-  { id: 'sm_10', pax: 3, name: 'Komal Bansal', contact: '8209062218', pickupPoint: 'Kalamandir', completed: false, called: false },
-  { id: 'sm_11', pax: 1, name: 'Shruthy', contact: '8606289404', pickupPoint: 'BTM', completed: false, called: false },
-  { id: 'sm_12', pax: 1, name: 'Karthikeyan', contact: '9080400758', pickupPoint: 'Kalamandir', completed: false, called: false },
-  { id: 'sm_13', pax: 4, name: 'Agnishuddho', contact: '6292281946', pickupPoint: 'Bellandur', completed: false, called: false },
-  { id: 'sm_14', pax: 2, name: 'Anurag Sinha', contact: '9852256130', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_15', pax: 1, name: 'Veer', contact: '8210228101', pickupPoint: 'Silk Board', completed: false, called: false },
-  { id: 'sm_16', pax: 2, name: 'Ashutosh', contact: '93001 39193', pickupPoint: 'Kalamandir', completed: false, called: false },
-  { id: 'sm_17', pax: 2, name: 'Chetna sahu', contact: '9425599556', pickupPoint: 'BTM', completed: false, called: false },
-  { id: 'sm_18', pax: 5, name: 'Raghav Agrawal', contact: '9910658003', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_19', pax: 3, name: 'Tejasri Pallati', contact: '8106829221', pickupPoint: 'Marathahalli', completed: false, called: false },
-  { id: 'sm_20', pax: 5, name: 'Shaziya Kazi', contact: '7359439586', pickupPoint: 'marathalli', completed: false, called: false }
-];
-
-// App State
+// Active App State - NO HARDCODED NAMES OR DETAILS
 let manifestList = [];
-let editingRowId = null;
 
 // DOM Elements
 const pdfFileInput = document.getElementById('pdfFileInput');
@@ -46,7 +24,7 @@ const tableBody = document.getElementById('tableBody');
 const emptyState = document.getElementById('emptyState');
 const manifestTable = document.getElementById('manifestTable');
 
-// Stats Elements
+// Stats
 const statTotalPax = document.getElementById('statTotalPax');
 const statTotalBookings = document.getElementById('statTotalBookings');
 const statPickedUp = document.getElementById('statPickedUp');
@@ -63,9 +41,7 @@ const pickupFilter = document.getElementById('pickupFilter');
 const statusFilter = document.getElementById('statusFilter');
 const batchCheckAllBtn = document.getElementById('batchCheckAllBtn');
 
-// Modals & Action Buttons
-const loadSampleBtn = document.getElementById('loadSampleBtn');
-const emptyLoadSampleBtn = document.getElementById('emptyLoadSampleBtn');
+// Actions & Modals
 const pasteTextBtn = document.getElementById('pasteTextBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
@@ -91,48 +67,48 @@ document.addEventListener('DOMContentLoaded', () => {
   renderManifest();
 });
 
-// Load state from browser LocalStorage
+// Load records from browser LocalStorage (starts empty if user hasn't uploaded yet)
 function loadFromStorage() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       manifestList = JSON.parse(saved);
     } else {
-      // Default to sample data so user immediately sees a working table
-      manifestList = [...SAMPLE_DATA];
-      saveToStorage(false);
+      manifestList = [];
     }
   } catch (err) {
-    console.error('Error loading from localStorage', err);
-    manifestList = [...SAMPLE_DATA];
+    console.error('Error reading localStorage', err);
+    manifestList = [];
   }
 }
 
-// Save state to browser LocalStorage
+// Save records to browser LocalStorage
 function saveToStorage(notify = true) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(manifestList));
-    updateStorageIndicator();
+    updateStorageBadge();
     if (notify) {
-      showToast('Changes saved to browser storage', 'success');
+      showToast('Saved to browser storage', 'success');
     }
   } catch (err) {
     console.error('Error saving to localStorage', err);
-    showToast('Failed to save to browser storage: ' + err.message, 'error');
+    showToast('Failed to save data: ' + err.message, 'error');
   }
 }
 
-function updateStorageIndicator() {
+function updateStorageBadge() {
   if (storageStatusText) {
-    storageStatusText.textContent = `Saved (${manifestList.length})`;
+    storageStatusText.textContent = manifestList.length > 0 
+      ? `Saved (${manifestList.length})` 
+      : 'Ready';
   }
 }
 
-// --- Setup Event Listeners ---
+// --- Setup User Events ---
 function setupEventListeners() {
   // File upload and drag-and-drop
   pdfFileInput.addEventListener('change', handleFileSelect);
-  
+
   ['dragenter', 'dragover'].forEach(eventName => {
     dropzone.addEventListener(eventName, (e) => {
       e.preventDefault();
@@ -150,14 +126,17 @@ function setupEventListeners() {
   dropzone.addEventListener('drop', (e) => {
     const dt = e.dataTransfer;
     const files = dt.files;
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-      processPdfFile(files[0]);
-    } else {
-      showToast('Please drop a valid PDF file.', 'error');
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        processPdfFile(file);
+      } else {
+        showToast('Please drop a valid PDF file.', 'error');
+      }
     }
   });
 
-  // Search and filter listeners
+  // Search input
   searchInput.addEventListener('input', () => {
     clearSearchBtn.style.display = searchInput.value ? 'block' : 'none';
     renderManifest();
@@ -169,25 +148,27 @@ function setupEventListeners() {
     renderManifest();
   });
 
+  // Filters
   pickupFilter.addEventListener('change', renderManifest);
   statusFilter.addEventListener('change', renderManifest);
 
-  // Quick Action Buttons
-  loadSampleBtn.addEventListener('click', () => loadSampleManifest(true));
-  emptyLoadSampleBtn.addEventListener('click', () => loadSampleManifest(true));
-
+  // Clear / Reset All
   clearAllBtn.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear all passengers? This cannot be undone.')) {
+    if (manifestList.length === 0) {
+      showToast('Manifest is already empty', 'info');
+      return;
+    }
+    if (confirm('Clear all passenger data from browser storage?')) {
       manifestList = [];
-      saveToStorage();
+      saveToStorage(false);
       renderManifest();
-      showToast('Manifest cleared', 'info');
+      showToast('All passenger records cleared', 'info');
     }
   });
 
   batchCheckAllBtn.addEventListener('click', handleToggleAllVisible);
 
-  // Manual Add Modal
+  // Manual Add Passenger Modal
   addManualBtn.addEventListener('click', () => {
     addPassengerForm.reset();
     document.getElementById('inputPax').value = '1';
@@ -211,7 +192,7 @@ function setupEventListeners() {
     }
 
     const newRecord = {
-      id: 'pax_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      id: 'pax_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       pax: paxVal,
       name: nameVal,
       contact: contactVal,
@@ -224,7 +205,7 @@ function setupEventListeners() {
     saveToStorage();
     renderManifest();
     closeAdd();
-    showToast(`Added ${nameVal} to manifest`, 'success');
+    showToast(`Added ${nameVal}`, 'success');
   });
 
   // Paste Text Modal
@@ -243,12 +224,12 @@ function setupEventListeners() {
   exportCsvBtn.addEventListener('click', exportToCsv);
 }
 
-// --- PDF Parsing Logic ---
+// --- PDF Parsing Engine ---
 function handleFileSelect(e) {
   const file = e.target.files[0];
   if (file) {
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      showToast('Please upload a PDF file.', 'error');
+      showToast('Please select a PDF file.', 'error');
       return;
     }
     processPdfFile(file);
@@ -256,66 +237,62 @@ function handleFileSelect(e) {
 }
 
 async function processPdfFile(file) {
-  showToast(`Parsing "${file.name}"...`, 'info');
+  showToast(`Reading PDF: ${file.name}...`, 'info');
   try {
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdfDoc = await loadingTask.promise;
-    
-    let extractedRows = [];
 
+    let allExtracted = [];
+
+    // Loop through all pages in the PDF
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
       const page = await pdfDoc.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageRows = parseTextContentToRows(textContent.items);
-      extractedRows = extractedRows.concat(pageRows);
+      const textContent = await page.getTextContent({ normalizeWhitespace: true });
+      const pageRows = parsePageTextContent(textContent.items);
+      allExtracted = allExtracted.concat(pageRows);
     }
 
-    if (extractedRows.length === 0) {
-      showToast('Could not automatically find table data in PDF. Try "Paste Copied Text" if it is scanned.', 'error');
+    if (allExtracted.length === 0) {
+      showToast('No table rows detected in the PDF. Please check if the file format matches: pax, Name, Contact, Pickup point.', 'error');
       return;
     }
 
-    // Merge or replace
-    const confirmOverwrite = manifestList.length > 0 
-      ? confirm(`Found ${extractedRows.length} passenger entries in PDF. Do you want to REPLACE the current manifest? (Click Cancel to APPEND instead)`)
-      : true;
-
-    if (confirmOverwrite) {
-      manifestList = extractedRows;
-    } else {
-      manifestList = manifestList.concat(extractedRows);
-    }
-
+    // Set manifest from PDF
+    manifestList = allExtracted;
     saveToStorage();
     renderManifest();
-    showToast(`Successfully imported ${extractedRows.length} passengers from PDF!`, 'success');
+    showToast(`Loaded ${allExtracted.length} passengers from PDF!`, 'success');
   } catch (err) {
     console.error('PDF parsing error:', err);
-    showToast('Failed to parse PDF: ' + err.message, 'error');
+    showToast('Failed to read PDF: ' + err.message, 'error');
   } finally {
     pdfFileInput.value = '';
   }
 }
 
 /**
- * Intelligent parser that groups PDF text items by vertical row (Y coordinate)
- * and column positions (X coordinate), matching Pax, Name, Contact, Pickup Point.
+ * Robust Table Extractor:
+ * Handles coordinates, variable spacing, and token stream fallbacks.
+ * Table format:
+ *   Column 1: pax (number)
+ *   Column 2: Name (text)
+ *   Column 3: Contact number (10 digits or formatted phone)
+ *   Column 4: Pickup point (text)
  */
-function parseTextContentToRows(items) {
+function parsePageTextContent(items) {
   if (!items || items.length === 0) return [];
 
-  // Group items by Y coordinate with a tolerance of 5px
+  // Group items by vertical line (Y coordinate, tolerance ~6px)
   const rowsMap = [];
 
   items.forEach(item => {
-    const text = item.str.trim();
+    const text = item.str ? item.str.trim() : '';
     if (!text) return;
 
     const x = item.transform[4];
     const y = item.transform[5];
 
-    // Find existing row with close Y coordinate
     let rowGroup = rowsMap.find(r => Math.abs(r.y - y) <= 6);
     if (!rowGroup) {
       rowGroup = { y, items: [] };
@@ -324,46 +301,63 @@ function parseTextContentToRows(items) {
     rowGroup.items.push({ x, text });
   });
 
-  // Sort rows top-to-bottom (in PDF coordinate system, larger Y is near the top)
+  // Sort rows top-to-bottom (PDF Y coordinate is bottom-up, so highest Y is first)
   rowsMap.sort((a, b) => b.y - a.y);
 
-  const parsedList = [];
+  const parsedRows = [];
 
+  // Find column header coordinates if present
+  let headerCoords = null;
   for (const row of rowsMap) {
-    // Sort items left-to-right
+    row.items.sort((a, b) => a.x - b.x);
+    const lineText = row.items.map(i => i.text).join(' ').toLowerCase();
+    if (lineText.includes('pax') && (lineText.includes('name') || lineText.includes('contact') || lineText.includes('pickup'))) {
+      headerCoords = row.items;
+      break;
+    }
+  }
+
+  // Parse each row
+  for (const row of rowsMap) {
     row.items.sort((a, b) => a.x - b.x);
 
-    // Filter out header row
-    const combinedLine = row.items.map(it => it.text).join(' ');
-    const lowerLine = combinedLine.toLowerCase();
-    if (lowerLine.includes('pax') && (lowerLine.includes('name') || lowerLine.includes('contact') || lowerLine.includes('pickup'))) {
-      continue; // Skip header
+    // Skip header row
+    const lineCombined = row.items.map(i => i.text).join(' ');
+    const lowerLine = lineCombined.toLowerCase();
+    if (lowerLine.includes('pax') && (lowerLine.includes('contact') || lowerLine.includes('pickup') || lowerLine.includes('name'))) {
+      continue;
     }
 
-    // Attempt 1: If 4 distinct columns detected
-    if (row.items.length >= 4) {
-      const firstNum = parseInt(row.items[0].text, 10);
-      if (!isNaN(firstNum)) {
-        // Find which item is phone number (matches 10 digits or pattern)
-        let phoneIdx = -1;
-        for (let i = 1; i < row.items.length; i++) {
-          const cleanDigits = row.items[i].text.replace(/\D/g, '');
-          if (cleanDigits.length >= 10) {
-            phoneIdx = i;
-            break;
-          }
-        }
+    // Attempt 1: Contact Number Anchor Detection
+    // Look for a phone number in the items
+    let phoneIndex = -1;
+    for (let i = 0; i < row.items.length; i++) {
+      const cleanDigits = row.items[i].text.replace(/\D/g, '');
+      // Match 10-digit Indian numbers or standard phone numbers
+      if (cleanDigits.length >= 10 && cleanDigits.length <= 13) {
+        phoneIndex = i;
+        break;
+      }
+    }
 
-        if (phoneIdx > 1) {
-          const pax = firstNum;
-          const name = row.items.slice(1, phoneIdx).map(it => it.text).join(' ').trim();
-          const contact = row.items[phoneIdx].text.trim();
-          const pickupPoint = row.items.slice(phoneIdx + 1).map(it => it.text).join(' ').trim();
+    if (phoneIndex !== -1) {
+      // Tokens before phone: first token should be pax number
+      const beforeTokens = row.items.slice(0, phoneIndex);
+      const afterTokens = row.items.slice(phoneIndex + 1);
+
+      if (beforeTokens.length >= 2 && afterTokens.length >= 1) {
+        const firstToken = beforeTokens[0].text;
+        const paxNum = parseInt(firstToken, 10);
+        
+        if (!isNaN(paxNum)) {
+          const name = beforeTokens.slice(1).map(t => t.text).join(' ').trim();
+          const contact = row.items[phoneIndex].text.trim();
+          const pickupPoint = afterTokens.map(t => t.text).join(' ').trim();
 
           if (name && contact && pickupPoint) {
-            parsedList.push({
-              id: 'pdf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-              pax,
+            parsedRows.push({
+              id: 'pdf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+              pax: paxNum,
               name,
               contact,
               pickupPoint,
@@ -376,32 +370,43 @@ function parseTextContentToRows(items) {
       }
     }
 
-    // Attempt 2: Heuristic regex on combined row string
-    const match = parseRowString(combinedLine);
-    if (match) {
-      parsedList.push(match);
+    // Attempt 2: Line Regex Parser
+    const regexParsed = parseRowString(lineCombined);
+    if (regexParsed) {
+      parsedRows.push(regexParsed);
     }
   }
 
-  return parsedList;
+  // Attempt 3: If coordinate grouping found nothing (e.g. stream printed), try token stream sequence
+  if (parsedRows.length === 0) {
+    const streamRows = parseTokenStream(items.map(i => i.str.trim()).filter(Boolean));
+    if (streamRows.length > 0) {
+      return streamRows;
+    }
+  }
+
+  return parsedRows;
 }
 
 /**
- * Fallback regex parser for row text
+ * Fallback regex parser for row string
+ * Format: [pax] [Name] [10-digit Phone] [Pickup Point]
  */
 function parseRowString(line) {
   if (!line || !line.trim()) return null;
   const trimmed = line.trim();
 
-  // Pattern: Pax (1-3 digits) -> Name -> Phone (10 digits) -> Pickup Point
-  // Example: "3 DEEPAK P 8939385647 Marathahalli" or with tabs/commas
-  // Handles phones like "8939385647", "+91 8939385647", "93001 39193"
-  const regex = /^(\d{1,3})\s+([A-Za-z\s.'-]+?)\s+((?:\+?91[\s-]*)?[6-9]\d{4}\s*\d{5}|\d{10})\s+(.+)$/i;
+  // Skip header lines
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('pax') && (lower.includes('contact') || lower.includes('pickup'))) return null;
+
+  // Regex matches: Pax Number (1-3 digits) -> Name -> Phone (10-12 digits) -> Pickup Point
+  const regex = /^(\d{1,3})\s+([A-Za-z\s.'-]+?)\s+((?:\+?91[\s-]*)?[6-9]\d{4}\s*\d{5}|[6-9]\d{9}|\b\d{10}\b)\s+(.+)$/i;
   const match = trimmed.match(regex);
 
   if (match) {
     return {
-      id: 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
       pax: parseInt(match[1], 10),
       name: match[2].trim(),
       contact: match[3].trim(),
@@ -411,34 +416,82 @@ function parseRowString(line) {
     };
   }
 
-  // Also support tab-delimited or comma-delimited
-  const tokens = trimmed.includes('\t') ? trimmed.split('\t') : trimmed.split(',');
-  if (tokens.length >= 4) {
-    const pax = parseInt(tokens[0].trim(), 10);
-    const name = tokens[1].trim();
-    const contact = tokens[2].trim();
-    const pickupPoint = tokens.slice(3).join(',').trim();
-    if (!isNaN(pax) && name && contact && pickupPoint) {
-      return {
-        id: 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-        pax,
-        name,
-        contact,
-        pickupPoint,
-        completed: false,
-        called: false
-      };
+  // Delimited fallback (Tab or Comma)
+  const delimiter = trimmed.includes('\t') ? '\t' : (trimmed.includes(',') ? ',' : null);
+  if (delimiter) {
+    const parts = trimmed.split(delimiter).map(p => p.trim()).filter(Boolean);
+    if (parts.length >= 4) {
+      const pax = parseInt(parts[0], 10);
+      if (!isNaN(pax)) {
+        return {
+          id: 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          pax,
+          name: parts[1],
+          contact: parts[2],
+          pickupPoint: parts.slice(3).join(' '),
+          completed: false,
+          called: false
+        };
+      }
     }
   }
 
   return null;
 }
 
+/**
+ * Sequential token stream fallback:
+ * Useful when PDF text is outputted linearly cell by cell:
+ * [Pax, Name, Phone, Pickup, Pax, Name, Phone, Pickup...]
+ */
+function parseTokenStream(tokens) {
+  const results = [];
+  let i = 0;
+
+  // Find start after header
+  while (i < tokens.length) {
+    const tok = tokens[i].toLowerCase();
+    if (tok.includes('pax') || tok.includes('pickup') || tok.includes('contact')) {
+      i++;
+    } else {
+      break;
+    }
+  }
+
+  while (i < tokens.length - 3) {
+    const paxCandidate = parseInt(tokens[i], 10);
+    // Pax is typically a small number (1-50)
+    if (!isNaN(paxCandidate) && paxCandidate >= 1 && paxCandidate <= 99) {
+      const name = tokens[i + 1];
+      const phone = tokens[i + 2];
+      const pickup = tokens[i + 3];
+
+      const cleanDigits = phone.replace(/\D/g, '');
+      if (cleanDigits.length >= 10 && cleanDigits.length <= 13) {
+        results.push({
+          id: 'tok_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          pax: paxCandidate,
+          name,
+          contact: phone,
+          pickupPoint: pickup,
+          completed: false,
+          called: false
+        });
+        i += 4;
+        continue;
+      }
+    }
+    i++;
+  }
+
+  return results;
+}
+
 // --- Import from Paste Modal ---
 function handlePastedTextImport() {
   const text = pasteTextarea.value.trim();
   if (!text) {
-    showToast('Please paste some data first', 'error');
+    showToast('Please paste table data first', 'error');
     return;
   }
 
@@ -447,10 +500,6 @@ function handlePastedTextImport() {
 
   for (const line of lines) {
     if (!line.trim()) continue;
-    // Skip header line
-    const lower = line.toLowerCase();
-    if (lower.includes('pax') && (lower.includes('name') || lower.includes('contact'))) continue;
-
     const row = parseRowString(line);
     if (row) {
       imported.push(row);
@@ -458,7 +507,7 @@ function handlePastedTextImport() {
   }
 
   if (imported.length === 0) {
-    showToast('Could not recognize any valid rows. Please check format: Pax Name Phone Pickup', 'error');
+    showToast('Could not parse rows. Ensure format is: Pax Name Phone Pickup', 'error');
     return;
   }
 
@@ -466,17 +515,7 @@ function handlePastedTextImport() {
   saveToStorage();
   renderManifest();
   pasteModal.classList.remove('active');
-  showToast(`Successfully imported ${imported.length} passengers!`, 'success');
-}
-
-// --- Sample Data Loader ---
-function loadSampleManifest(notify = false) {
-  manifestList = JSON.parse(JSON.stringify(SAMPLE_DATA));
-  saveToStorage(notify);
-  renderManifest();
-  if (notify) {
-    showToast('Loaded 20 passengers from sample table', 'success');
-  }
+  showToast(`Imported ${imported.length} passengers!`, 'success');
 }
 
 // --- Render Manifest & Stats ---
@@ -489,7 +528,6 @@ function renderManifest() {
   const selectedStatus = statusFilter.value;
 
   const filtered = manifestList.filter(item => {
-    // Search
     if (searchTerm) {
       const matchName = item.name.toLowerCase().includes(searchTerm);
       const matchContact = item.contact.replace(/\s+/g, '').includes(searchTerm.replace(/\s+/g, ''));
@@ -497,12 +535,10 @@ function renderManifest() {
       if (!matchName && !matchContact && !matchPickup) return false;
     }
 
-    // Pickup filter
     if (selectedPickup !== 'all' && item.pickupPoint.toLowerCase() !== selectedPickup.toLowerCase()) {
       return false;
     }
 
-    // Status filter
     if (selectedStatus === 'pending' && item.completed) return false;
     if (selectedStatus === 'completed' && !item.completed) return false;
 
@@ -519,7 +555,7 @@ function renderManifest() {
     } else {
       emptyState.style.display = 'none';
       manifestTable.style.display = 'table';
-      tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">No passengers matching current filters.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted); font-weight: 600;">No passengers match the current filters.</td></tr>`;
     }
     return;
   }
@@ -559,7 +595,7 @@ function renderManifest() {
         <td>
           <div class="contact-display">
             <span>${escapeHtml(item.contact)}</span>
-            <button class="btn-copy-num" data-phone="${escapeHtml(item.contact)}" title="Copy Phone Number">
+            <button class="btn-copy-num" data-phone="${escapeHtml(item.contact)}" title="Copy Number">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
           </div>
@@ -582,16 +618,16 @@ function renderManifest() {
             href="tel:${cleanPhone}" 
             class="btn-call ${isCalled ? 'called-already' : ''}" 
             data-id="${item.id}"
-            title="Call ${escapeHtml(item.name)} directly (${cleanPhone})"
+            title="Call ${escapeHtml(item.name)} (${cleanPhone})"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
             </svg>
             ${isCalled ? 'Called' : 'Call'}
           </a>
         </td>
 
-        <!-- Row Actions (Delete) -->
+        <!-- Row Delete Action -->
         <td style="text-align: right;">
           <button class="row-delete-btn" data-id="${item.id}" title="Remove entry">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -604,9 +640,8 @@ function renderManifest() {
   attachRowEventListeners();
 }
 
-// Attach listeners to dynamic elements inside the table
 function attachRowEventListeners() {
-  // Checkbox toggle (Picked up / done)
+  // Checkbox toggle
   document.querySelectorAll('.row-checkbox').forEach(chk => {
     chk.addEventListener('change', (e) => {
       const id = e.target.getAttribute('data-id');
@@ -615,15 +650,14 @@ function attachRowEventListeners() {
         item.completed = e.target.checked;
         saveToStorage(false);
         renderManifest();
-        const msg = item.completed ? `Marked ${item.name} as Picked Up` : `Unmarked ${item.name}`;
-        showToast(msg, 'info');
+        showToast(item.completed ? `Checked ${item.name}` : `Unchecked ${item.name}`, 'info');
       }
     });
   });
 
-  // Call Button click listener (records call status and triggers tel:)
+  // Direct Call Button
   document.querySelectorAll('.btn-call').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const item = manifestList.find(x => x.id === id);
       if (item) {
@@ -631,22 +665,22 @@ function attachRowEventListeners() {
         saveToStorage(false);
         btn.classList.add('called-already');
         btn.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
           </svg> Called`;
-        showToast(`Initiating call to ${item.name} (${item.contact})...`, 'info');
+        showToast(`Opening dialer for ${item.name}...`, 'info');
       }
     });
   });
 
-  // Copy phone number
+  // Copy number
   document.querySelectorAll('.btn-copy-num').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const phone = btn.getAttribute('data-phone');
       if (navigator.clipboard) {
         navigator.clipboard.writeText(phone).then(() => {
-          showToast(`Copied ${phone} to clipboard`, 'success');
+          showToast(`Copied ${phone}`, 'success');
         });
       } else {
         showToast(`Phone: ${phone}`, 'info');
@@ -654,12 +688,12 @@ function attachRowEventListeners() {
     });
   });
 
-  // Delete row
+  // Delete passenger row
   document.querySelectorAll('.row-delete-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const item = manifestList.find(x => x.id === id);
-      if (item && confirm(`Remove ${item.name} from the list?`)) {
+      if (item && confirm(`Remove ${item.name}?`)) {
         manifestList = manifestList.filter(x => x.id !== id);
         saveToStorage();
         renderManifest();
@@ -667,10 +701,10 @@ function attachRowEventListeners() {
     });
   });
 
-  // Inline Pickup Point Editing
+  // Editable Pickup Point (click / tap to edit)
   document.querySelectorAll('.editable-pickup-cell').forEach(cell => {
-    cell.addEventListener('click', (e) => {
-      if (cell.querySelector('.pickup-inline-input')) return; // already editing
+    cell.addEventListener('click', () => {
+      if (cell.querySelector('.pickup-inline-input')) return;
 
       const id = cell.getAttribute('data-id');
       const item = manifestList.find(x => x.id === id);
@@ -710,13 +744,13 @@ function attachRowEventListeners() {
   });
 }
 
-// --- Toggle All Visible Checkboxes ---
+// Toggle all currently visible checkboxes
 function handleToggleAllVisible() {
   const visibleCheckboxes = document.querySelectorAll('.row-checkbox');
   if (visibleCheckboxes.length === 0) return;
 
   const someUnchecked = Array.from(visibleCheckboxes).some(cb => !cb.checked);
-  const targetState = someUnchecked; // if some unchecked, mark all checked, else uncheck all
+  const targetState = someUnchecked;
 
   visibleCheckboxes.forEach(cb => {
     const id = cb.getAttribute('data-id');
@@ -728,14 +762,14 @@ function handleToggleAllVisible() {
 
   saveToStorage();
   renderManifest();
-  showToast(targetState ? 'Marked all filtered as Picked Up' : 'Unchecked all filtered', 'info');
+  showToast(targetState ? 'Marked all visible as Picked Up' : 'Unchecked all visible', 'info');
 }
 
-// --- Metrics / Stats Calculation ---
+// Update stats
 function updateStats() {
   const totalBookings = manifestList.length;
   const totalPax = manifestList.reduce((acc, curr) => acc + (parseInt(curr.pax, 10) || 1), 0);
-  
+
   const pickedList = manifestList.filter(x => x.completed);
   const pickedBookings = pickedList.length;
   const pickedPax = pickedList.reduce((acc, curr) => acc + (parseInt(curr.pax, 10) || 1), 0);
@@ -751,12 +785,11 @@ function updateStats() {
   statPaxPending.textContent = `${pendingPax} pax waiting`;
 }
 
-// --- Update Pickup Point Filter Options ---
+// Update Pickup Point filter options dynamically from current list
 function updatePickupFilterDropdown() {
   const currentSelection = pickupFilter.value;
   const uniquePoints = Array.from(new Set(manifestList.map(item => item.pickupPoint.trim()).filter(Boolean))).sort();
 
-  // Preserve existing options
   pickupFilter.innerHTML = '<option value="all">All Pickup Points</option>';
   uniquePoints.forEach(pt => {
     const opt = document.createElement('option');
@@ -769,14 +802,14 @@ function updatePickupFilterDropdown() {
   });
 }
 
-// --- Export to CSV ---
+// Export Manifest to CSV
 function exportToCsv() {
   if (manifestList.length === 0) {
-    showToast('Manifest is empty.', 'error');
+    showToast('Manifest is empty. Upload a PDF first.', 'error');
     return;
   }
 
-  const headers = ['Pax', 'Name', 'Contact Number', 'Pickup Point', 'Status', 'Call Made'];
+  const headers = ['Pax', 'Name', 'Contact Number', 'Pickup Point', 'Status', 'Called'];
   const rows = manifestList.map(item => [
     `"${item.pax}"`,
     `"${item.name.replace(/"/g, '""')}"`,
@@ -791,25 +824,25 @@ function exportToCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `passenger_manifest_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `manifest_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('Manifest exported to CSV', 'success');
+  showToast('Exported to CSV', 'success');
 }
 
-// --- Toast Notifications ---
+// Toast Notifications
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  
+
   let iconSvg = '';
   if (type === 'success') {
-    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    iconSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   } else if (type === 'error') {
-    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+    iconSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
   } else {
-    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+    iconSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
   }
 
   toast.innerHTML = `${iconSvg} <span>${escapeHtml(message)}</span>`;
@@ -818,12 +851,11 @@ function showToast(message, type = 'info') {
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3200);
+    toast.style.transition = 'all 0.25s ease';
+    setTimeout(() => toast.remove(), 250);
+  }, 3000);
 }
 
-// --- Utilities ---
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
